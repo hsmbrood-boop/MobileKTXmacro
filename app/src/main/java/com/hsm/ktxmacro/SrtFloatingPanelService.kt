@@ -45,7 +45,7 @@ import androidx.core.app.NotificationCompat
 import java.io.File
 import kotlinx.coroutines.*
 
-class FloatingPanelService : Service() {
+class SrtFloatingPanelService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var panelView: View
@@ -58,23 +58,19 @@ class FloatingPanelService : Service() {
 
     private val logBuffer = ArrayDeque<String>(30)
 
-    // 버튼 반짝임
     private var blinkHandler: Handler? = null
     private var blinkRunnable: Runnable? = null
     private var blinkTarget: Button? = null
     private var blinkOn = false
 
-    // 매크로 경과 시간 타이머
     private var elapsedHandler: Handler? = null
     private var elapsedRunnable: Runnable? = null
     private var elapsedBtn: Button? = null
     private var elapsedLabel: String = ""
     private var macroStartTime: Long = 0L
 
-    // 알람
     private var mediaPlayer: MediaPlayer? = null
 
-    // 화면 캡처 관련
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
@@ -83,17 +79,17 @@ class FloatingPanelService : Service() {
     var captureSnapshot: Bitmap? = null
 
     private val templates = mutableMapOf<String, Bitmap>()
-    private val textTargets = mutableMapOf<String, String>()  // b2~b5 글자 인식 텍스트
+    private val textTargets = mutableMapOf<String, String>()
     private val recognizer by lazy {
         TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
     }
 
     companion object {
-        const val CHANNEL_ID = "ktx_macro"
-        const val ACTION_SHOW_PANEL = "com.hsm.ktxmacro.SHOW_PANEL"
+        const val CHANNEL_ID = "srt_macro"
+        const val ACTION_SHOW_PANEL = "com.hsm.ktxmacro.SRT_SHOW_PANEL"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_DATA = "data"
-        var instance: FloatingPanelService? = null
+        var instance: SrtFloatingPanelService? = null
     }
 
     override fun onCreate() {
@@ -101,8 +97,7 @@ class FloatingPanelService : Service() {
         instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
-        // 일단 기본 알림으로 포그라운드 시작 (MediaProjection 타입은 토큰 받은 후 재시작)
-        startForeground(1, buildNotification())
+        startForeground(2, buildNotification())
         inflatePanel()
         loadTemplates()
         loadTextTargets()
@@ -115,7 +110,6 @@ class FloatingPanelService : Service() {
                 if (::panelView.isInitialized) panelView.visibility = View.VISIBLE
             }
             else -> {
-                // RESULT_OK = -1 이므로 기본값을 Int.MIN_VALUE로 구분
                 val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, Int.MIN_VALUE) ?: Int.MIN_VALUE
                 val data: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent?.getParcelableExtra(EXTRA_DATA, Intent::class.java)
@@ -143,7 +137,7 @@ class FloatingPanelService : Service() {
         imageReader?.close()
         imageReader = null
         val mp = mediaProjection
-        mediaProjection = null   // 콜백 재진입 방지
+        mediaProjection = null
         mp?.stop()
         recognizer.close()
         if (::panelView.isInitialized) windowManager.removeView(panelView)
@@ -152,53 +146,39 @@ class FloatingPanelService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    // ── 화면 캡처 초기화 ─────────────────────────────────────────
     private fun initScreenCapture(resultCode: Int, data: Intent) {
-        // 이전 캡처 리소스 정리 (재호출 시 누수 방지)
-        captureScope?.cancel()
-        captureScope = null
-        virtualDisplay?.release()
-        virtualDisplay = null
-        imageReader?.close()
-        imageReader = null
-        screenBitmap = null
-        // mediaProjection?.stop() 호출 시 onStop 콜백이 재진입할 수 있어 직접 해제만
-        mediaProjection = null
+        captureScope?.cancel(); captureScope = null
+        virtualDisplay?.release(); virtualDisplay = null
+        imageReader?.close(); imageReader = null
+        screenBitmap = null; mediaProjection = null
 
         try {
             setStatus("캡처 초기화 중...")
             val (w, h) = getScreenSize()
             val dpi = resources.displayMetrics.densityDpi
 
-            // MediaProjection 타입으로 foreground 재선언 (getMediaProjection 전에 필수)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(1, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+                startForeground(2, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
             } else {
-                startForeground(1, buildNotification())
+                startForeground(2, buildNotification())
             }
 
             val mpManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjection = mpManager.getMediaProjection(resultCode, data)
 
-            // Android 14 필수: createVirtualDisplay 전에 콜백 등록
-            // onStop 시 서비스를 종료하지 않고 상태만 알림 (패널 유지)
             mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
-                    captureScope?.cancel()
-                    captureScope = null
-                    virtualDisplay?.release()
-                    virtualDisplay = null
-                    imageReader?.close()
-                    imageReader = null
-                    screenBitmap = null
-                    mediaProjection = null
+                    captureScope?.cancel(); captureScope = null
+                    virtualDisplay?.release(); virtualDisplay = null
+                    imageReader?.close(); imageReader = null
+                    screenBitmap = null; mediaProjection = null
                     setStatus("화면 캡처 중단 → 앱 열어 재허용")
                 }
             }, Handler(Looper.getMainLooper()))
 
             imageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
             virtualDisplay = mediaProjection!!.createVirtualDisplay(
-                "KtxCapture", w, h, dpi,
+                "SrtCapture", w, h, dpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader!!.surface, null, null
             )
@@ -206,9 +186,7 @@ class FloatingPanelService : Service() {
             captureScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
             captureScope!!.launch {
                 while (isActive) {
-                    try {
-                        captureScreen()?.let { screenBitmap = it }
-                    } catch (_: Throwable) {}
+                    try { captureScreen()?.let { screenBitmap = it } } catch (_: Throwable) {}
                     delay(100)
                 }
             }
@@ -218,7 +196,6 @@ class FloatingPanelService : Service() {
         }
     }
 
-    // ── 화면 캡처 ────────────────────────────────────────────────
     fun captureScreen(): Bitmap? {
         return try {
             val image = imageReader?.acquireLatestImage() ?: return null
@@ -231,15 +208,12 @@ class FloatingPanelService : Service() {
                 )
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 Bitmap.createBitmap(bmp, 0, 0, image.width, image.height)
-            } finally {
-                image.close()
-            }
+            } finally { image.close() }
         } catch (_: Throwable) { null }
     }
 
-    // ── 패널 생성 ────────────────────────────────────────────────
     private fun inflatePanel() {
-        panelView = LayoutInflater.from(this).inflate(R.layout.floating_panel, null)
+        panelView = LayoutInflater.from(this).inflate(R.layout.srt_floating_panel, null)
         tvStatus = panelView.findViewById(R.id.tv_status)
         tvLog = panelView.findViewById(R.id.tv_log)
         scrollLog = panelView.findViewById(R.id.scroll_log)
@@ -256,7 +230,7 @@ class FloatingPanelService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            windowAnimations = 0  // 드래그 시 시스템 이동 애니메이션 제거
+            windowAnimations = 0
             x = pos.first; y = pos.second
         }
 
@@ -273,8 +247,7 @@ class FloatingPanelService : Service() {
                 MotionEvent.ACTION_DOWN -> {
                     v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
                     startX = event.rawX; startY = event.rawY
-                    initX = panelWMParams.x; initY = panelWMParams.y
-                    true
+                    initX = panelWMParams.x; initY = panelWMParams.y; true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val (sw, sh) = getScreenSize()
@@ -282,12 +255,10 @@ class FloatingPanelService : Service() {
                     val newY = initY + (event.rawY - startY).toInt()
                     panelWMParams.x = newX.coerceIn(0, (sw - panelView.width).coerceAtLeast(0))
                     panelWMParams.y = newY.coerceIn(0, (sh - panelView.height).coerceAtLeast(0))
-                    windowManager.updateViewLayout(panelView, panelWMParams)
-                    true
+                    windowManager.updateViewLayout(panelView, panelWMParams); true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    savePanelPosition(panelWMParams.x, panelWMParams.y)
-                    false
+                    savePanelPosition(panelWMParams.x, panelWMParams.y); false
                 }
                 else -> false
             }
@@ -306,7 +277,6 @@ class FloatingPanelService : Service() {
 
     private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density + 0.5f).toInt()
 
-    // 오버레이 패널 위치를 검은 사각형으로 덮어 OCR 오인식 방지
     private fun maskPanelArea(original: Bitmap): Bitmap {
         if (!::panelWMParams.isInitialized || !::panelView.isInitialized) return original
         if (panelView.visibility != View.VISIBLE) return original
@@ -314,10 +284,8 @@ class FloatingPanelService : Service() {
         if (pw <= 0 || ph <= 0) return original
         val masked = original.copy(Bitmap.Config.ARGB_8888, true)
         Canvas(masked).drawRect(
-            panelWMParams.x.toFloat(),
-            panelWMParams.y.toFloat(),
-            (panelWMParams.x + pw).toFloat(),
-            (panelWMParams.y + ph).toFloat(),
+            panelWMParams.x.toFloat(), panelWMParams.y.toFloat(),
+            (panelWMParams.x + pw).toFloat(), (panelWMParams.y + ph).toFloat(),
             Paint().apply { color = Color.BLACK }
         )
         return masked
@@ -336,18 +304,18 @@ class FloatingPanelService : Service() {
     }
 
     private fun savePanelPosition(x: Int, y: Int) {
-        getSharedPreferences("panel_prefs", MODE_PRIVATE).edit()
+        getSharedPreferences("srt_panel_prefs", MODE_PRIVATE).edit()
             .putInt("panel_x", x).putInt("panel_y", y).apply()
     }
 
     private fun loadPanelPosition(): Pair<Int, Int> {
-        val prefs = getSharedPreferences("panel_prefs", MODE_PRIVATE)
-        return Pair(prefs.getInt("panel_x", 0), prefs.getInt("panel_y", 200))
+        val prefs = getSharedPreferences("srt_panel_prefs", MODE_PRIVATE)
+        return Pair(prefs.getInt("panel_x", 0), prefs.getInt("panel_y", 300))
     }
 
     private fun setupButtons() {
-        panelView.findViewById<Button>(R.id.btn_seat).setOnClickListener { startMacro("seat") }
-        panelView.findViewById<Button>(R.id.btn_standing).setOnClickListener { startMacro("standing") }
+        panelView.findViewById<Button>(R.id.btn_srt_seat).setOnClickListener { startMacro("srt_seat") }
+        panelView.findViewById<Button>(R.id.btn_srt_standing).setOnClickListener { startMacro("srt_standing") }
         panelView.findViewById<Button>(R.id.btn_stop).setOnClickListener {
             macroEngine?.stop()
             stopBlink()
@@ -358,7 +326,7 @@ class FloatingPanelService : Service() {
 
         panelView.findViewById<Button>(R.id.btn_minimize).setOnClickListener {
             panelView.visibility = View.GONE
-            updateNotification("패널 숨김 - 여기를 탭하면 다시 표시됩니다")
+            updateNotification("SRT 패널 숨김 - 여기를 탭하면 다시 표시됩니다")
         }
 
         panelView.findViewById<Button>(R.id.btn_exit).setOnClickListener {
@@ -366,10 +334,10 @@ class FloatingPanelService : Service() {
             stopSelf()
         }
 
-        // b1, b2: 이미지 캡처 / b3~b8: 텍스트 설정
-        panelView.findViewById<View>(R.id.btn_b1)?.setOnClickListener { startRegionCapture("b1") }
-        panelView.findViewById<View>(R.id.btn_b2)?.setOnClickListener { startRegionCapture("b2") }
-        listOf("b3","b4","b5","b6","b7","b8").forEach { prefix ->
+        // sb1, sb2: 이미지 캡처 / sb3~sb8: 텍스트 설정
+        panelView.findViewById<View>(R.id.btn_sb1)?.setOnClickListener { startRegionCapture("sb1") }
+        panelView.findViewById<View>(R.id.btn_sb2)?.setOnClickListener { startRegionCapture("sb2") }
+        listOf("sb3","sb4","sb5","sb6","sb7","sb8").forEach { prefix ->
             val id = resources.getIdentifier("btn_$prefix", "id", packageName)
             panelView.findViewById<View>(id)?.setOnClickListener { showTextInputDialog(prefix) }
         }
@@ -384,10 +352,9 @@ class FloatingPanelService : Service() {
         }
         if (isRegionSelectOpen) return
         if (screenBitmap == null && mediaProjection == null) {
-            setStatus("화면 캡처 없음 → ▼ 열고 '📷 화면 캡처 허용' 누르세요")
+            setStatus("화면 캡처 없음 → ▼ 열고 앱에서 화면 캡처 허용 누르세요")
             return
         }
-        // 기존 매크로 정지 후 새로 시작
         macroEngine?.stop()
         stopBlink()
         tryLaunchMacro(mode, 30)
@@ -399,7 +366,7 @@ class FloatingPanelService : Service() {
             captureSnapshot = snap
             isRegionSelectOpen = true
             try {
-                startActivity(Intent(this, RegionSelectActivity::class.java).apply {
+                startActivity(Intent(this, SrtRegionSelectActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     putExtra("mode", mode)
                 })
@@ -411,7 +378,7 @@ class FloatingPanelService : Service() {
             setStatus("화면 준비 중... ($remaining)")
             Handler(Looper.getMainLooper()).postDelayed({ tryLaunchMacro(mode, remaining - 1) }, 100)
         } else {
-            setStatus("화면 캡처 없음 → ▼ 열고 '📷 화면 캡처 허용' 누르세요")
+            setStatus("화면 캡처 없음 → 앱을 재시작해주세요")
         }
     }
 
@@ -419,8 +386,8 @@ class FloatingPanelService : Service() {
         isRegionSelectOpen = false
         setStatus("매크로 시작: $mode")
         macroEngine?.start(mode, region, templates, textTargets)
-        val btnId = if (mode == "seat") R.id.btn_seat else R.id.btn_standing
-        val label = if (mode == "seat") "KTX 좌석예매" else "KTX 입석포함예매"
+        val btnId = if (mode == "srt_seat") R.id.btn_srt_seat else R.id.btn_srt_standing
+        val label = if (mode == "srt_seat") "SRT 좌석예매" else "SRT 입석포함예매"
         Handler(Looper.getMainLooper()).post {
             if (panelExpanded) togglePanel()
             panelView.findViewById<Button>(btnId)?.let { btn ->
@@ -453,7 +420,7 @@ class FloatingPanelService : Service() {
     }
 
     private fun launchRegionSelect(prefix: String) {
-        startActivity(Intent(this, RegionSelectActivity::class.java).apply {
+        startActivity(Intent(this, SrtRegionSelectActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("capture_prefix", prefix)
         })
@@ -468,7 +435,7 @@ class FloatingPanelService : Service() {
     }
 
     private fun loadTemplates() {
-        listOf("b1", "b2").forEach { key ->
+        listOf("sb1", "sb2").forEach { key ->
             val file = File(filesDir, "$key.png")
             if (file.exists()) {
                 val bmp = BitmapFactory.decodeFile(file.absolutePath)
@@ -493,7 +460,7 @@ class FloatingPanelService : Service() {
             } else {
                 imgView?.visibility = View.GONE
                 lblView?.text = prefix
-                lblView?.setTextColor(Color.parseColor("#64ffda"))
+                lblView?.setTextColor(Color.parseColor("#c084e8"))
             }
         }
     }
@@ -509,16 +476,11 @@ class FloatingPanelService : Service() {
         )
     }
 
-    // OCR 정확도 향상: 스케일업 + 명암 강화
     private fun prepareForOcr(bitmap: Bitmap, isRegion: Boolean): Pair<Bitmap, Float> {
         val scale = if (isRegion) 4f else 1.5f
         val scaled = Bitmap.createScaledBitmap(
-            bitmap,
-            (bitmap.width * scale).toInt(),
-            (bitmap.height * scale).toInt(),
-            true
+            bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true
         )
-        // 명암 강화 (텍스트↔배경 구분력 향상)
         val enhanced = Bitmap.createBitmap(scaled.width, scaled.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(enhanced)
         val cm = ColorMatrix(floatArrayOf(
@@ -531,7 +493,6 @@ class FloatingPanelService : Service() {
         return enhanced to scale
     }
 
-    // 범위를 각 방향 100px 확장 (약간 벗어난 선택도 포착)
     private fun expandRegion(region: Rect, src: Bitmap, margin: Int = 100): Rect = Rect(
         (region.left - margin).coerceAtLeast(0),
         (region.top - margin).coerceAtLeast(0),
@@ -539,24 +500,17 @@ class FloatingPanelService : Service() {
         (region.bottom + margin).coerceAtMost(src.height)
     )
 
-    // ML Kit로 현재 화면에서 텍스트 위치 탐색 (region=null이면 전체화면)
     suspend fun findTextOnScreen(text: String, region: Rect? = null): Point? {
         if (text.isBlank()) return null
         val full = screenBitmap ?: return null
         val src = maskPanelArea(full)
-
-        val rawBitmap: Bitmap
-        val offsetX: Int; val offsetY: Int
+        val rawBitmap: Bitmap; val offsetX: Int; val offsetY: Int
         if (region != null) {
             val exp = expandRegion(region, src)
             rawBitmap = Bitmap.createBitmap(src, exp.left, exp.top, exp.width(), exp.height())
             offsetX = exp.left; offsetY = exp.top
-        } else {
-            rawBitmap = src; offsetX = 0; offsetY = 0
-        }
-
+        } else { rawBitmap = src; offsetX = 0; offsetY = 0 }
         val (bitmap, scale) = prepareForOcr(rawBitmap, region != null)
-
         return suspendCancellableCoroutine { cont ->
             val image = InputImage.fromBitmap(bitmap, 0)
             recognizer.process(image)
@@ -570,8 +524,7 @@ class FloatingPanelService : Service() {
                                 found = line.boundingBox?.let {
                                     Point((it.centerX() / scale).toInt() + offsetX,
                                           (it.centerY() / scale).toInt() + offsetY)
-                                }
-                                break
+                                }; break
                             }
                         }
                         if (found != null) break
@@ -582,24 +535,17 @@ class FloatingPanelService : Service() {
         }
     }
 
-    // 전체 화면에서 텍스트 일치 위치를 모두 반환
     suspend fun findAllTextOnScreen(text: String, region: Rect? = null): List<Point> {
         if (text.isBlank()) return emptyList()
         val full = screenBitmap ?: return emptyList()
         val src = maskPanelArea(full)
-
-        val rawBitmap: Bitmap
-        val offsetX: Int; val offsetY: Int
+        val rawBitmap: Bitmap; val offsetX: Int; val offsetY: Int
         if (region != null) {
             val exp = expandRegion(region, src)
             rawBitmap = Bitmap.createBitmap(src, exp.left, exp.top, exp.width(), exp.height())
             offsetX = exp.left; offsetY = exp.top
-        } else {
-            rawBitmap = src; offsetX = 0; offsetY = 0
-        }
-
+        } else { rawBitmap = src; offsetX = 0; offsetY = 0 }
         val (bitmap, scale) = prepareForOcr(rawBitmap, region != null)
-
         return suspendCancellableCoroutine { cont ->
             val image = InputImage.fromBitmap(bitmap, 0)
             recognizer.process(image)
@@ -613,8 +559,7 @@ class FloatingPanelService : Service() {
                                 line.boundingBox?.let {
                                     found.add(Point((it.centerX() / scale).toInt() + offsetX,
                                                     (it.centerY() / scale).toInt() + offsetY))
-                                }
-                                break
+                                }; break
                             }
                         }
                     }
@@ -624,32 +569,22 @@ class FloatingPanelService : Service() {
         }
     }
 
-    // OCR 오인식 보정 매칭 (숫자↔문자 혼동, 공백 무시)
     private fun lineMatchesKeyword(lineText: String, keyword: String): Boolean {
         if (lineText.contains(keyword)) return true
-        // 공백 제거 후 비교
         val normalLine = lineText.replace(" ", "")
         val normalKeyword = keyword.replace(" ", "")
         if (normalLine.contains(normalKeyword)) return true
-        // 0↔O, l↔1, 숫자 혼동 보정
-        val fixedLine = normalLine
-            .replace('O', '0').replace('o', '0')
-            .replace('l', '1').replace('I', '1')
-        val fixedKeyword = normalKeyword
-            .replace('O', '0').replace('o', '0')
-            .replace('l', '1').replace('I', '1')
+        val fixedLine = normalLine.replace('O', '0').replace('o', '0').replace('l', '1').replace('I', '1')
+        val fixedKeyword = normalKeyword.replace('O', '0').replace('o', '0').replace('l', '1').replace('I', '1')
         return fixedLine.contains(fixedKeyword)
     }
 
-    // ── 버튼 반짝임 ───────────────────────────────────────────────
     private fun startBlink(btn: Button) {
         stopBlink()
-        blinkTarget = btn
-        blinkOn = false
+        blinkTarget = btn; blinkOn = false
         val h = Handler(Looper.getMainLooper())
         blinkHandler = h
-        val originalTint = "#1565c0"
-        val highlightTint = "#ff8f00"
+        val originalTint = "#6a0572"; val highlightTint = "#ff8f00"
         blinkRunnable = object : Runnable {
             override fun run() {
                 blinkOn = !blinkOn
@@ -665,16 +600,14 @@ class FloatingPanelService : Service() {
     private fun stopBlink() {
         blinkHandler?.removeCallbacksAndMessages(null)
         blinkHandler = null; blinkRunnable = null
-        blinkTarget?.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1565c0"))
+        blinkTarget?.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#6a0572"))
         blinkTarget = null
         stopElapsedTimer()
     }
 
-    // ── 경과 시간 타이머 ──────────────────────────────────────────
     private fun startElapsedTimer(btn: Button, label: String) {
         stopElapsedTimer()
-        elapsedBtn = btn
-        elapsedLabel = label
+        elapsedBtn = btn; elapsedLabel = label
         macroStartTime = System.currentTimeMillis()
         val h = Handler(Looper.getMainLooper())
         elapsedHandler = h
@@ -688,13 +621,11 @@ class FloatingPanelService : Service() {
         h.post(elapsedRunnable!!)
     }
 
-    // b7 발견 시: 시간 표시는 그대로 두고 업데이트만 멈춤
     private fun freezeElapsedTimer() {
         elapsedHandler?.removeCallbacksAndMessages(null)
         elapsedHandler = null; elapsedRunnable = null
     }
 
-    // 매크로 종료 시: 버튼 텍스트 원래대로 복원
     private fun stopElapsedTimer() {
         elapsedHandler?.removeCallbacksAndMessages(null)
         elapsedHandler = null; elapsedRunnable = null
@@ -702,32 +633,23 @@ class FloatingPanelService : Service() {
         elapsedBtn = null; elapsedLabel = ""
     }
 
-    // ── 알람 ──────────────────────────────────────────────────────
     private fun startAlarm() {
         freezeElapsedTimer()
         stopAlarm()
         try {
             val resId = resources.getIdentifier("s1", "raw", packageName)
             if (resId != 0) {
-                mediaPlayer = MediaPlayer.create(this, resId)?.apply {
-                    isLooping = true
-                    start()
-                }
+                mediaPlayer = MediaPlayer.create(this, resId)?.apply { isLooping = true; start() }
             } else {
                 setStatus("⚠️ s1.mp3 없음 (res/raw/에 추가하세요)")
             }
-        } catch (e: Exception) {
-            setStatus("알람 오류: ${e.message}")
-        }
+        } catch (e: Exception) { setStatus("알람 오류: ${e.message}") }
     }
 
     private fun stopAlarm() {
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
-        mediaPlayer = null
+        mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null
     }
 
-    // 텍스트 인식 버튼(b2~b5) 탭 시 입력 다이얼로그
     private fun showTextInputDialog(prefix: String) {
         Handler(Looper.getMainLooper()).post {
             val editText = EditText(this).apply {
@@ -765,8 +687,8 @@ class FloatingPanelService : Service() {
     }
 
     private fun loadTextTargets() {
-        val prefs = getSharedPreferences("text_targets", MODE_PRIVATE)
-        listOf("b3","b4","b5","b6","b7","b8").forEach { prefix ->
+        val prefs = getSharedPreferences("srt_text_targets", MODE_PRIVATE)
+        listOf("sb3","sb4","sb5","sb6","sb7","sb8").forEach { prefix ->
             val text = prefs.getString(prefix, null)
             if (!text.isNullOrBlank()) {
                 textTargets[prefix] = text
@@ -776,8 +698,8 @@ class FloatingPanelService : Service() {
     }
 
     private fun saveTextTargets() {
-        val prefs = getSharedPreferences("text_targets", MODE_PRIVATE).edit()
-        listOf("b3","b4","b5","b6","b7","b8").forEach { prefix ->
+        val prefs = getSharedPreferences("srt_text_targets", MODE_PRIVATE).edit()
+        listOf("sb3","sb4","sb5","sb6","sb7","sb8").forEach { prefix ->
             prefs.putString(prefix, textTargets[prefix] ?: "")
         }
         prefs.apply()
@@ -790,10 +712,10 @@ class FloatingPanelService : Service() {
             val lbl = panelView.findViewById<TextView>(lblId) ?: return@post
             if (text.isNullOrBlank()) {
                 lbl.text = "$prefix\n미설정"
-                lbl.setTextColor(Color.parseColor("#3a7a5a"))
+                lbl.setTextColor(Color.parseColor("#7a3a9a"))
             } else {
                 lbl.text = "$prefix\n\"$text\""
-                lbl.setTextColor(Color.parseColor("#64ffda"))
+                lbl.setTextColor(Color.parseColor("#c084e8"))
             }
         }
     }
@@ -816,15 +738,15 @@ class FloatingPanelService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val ch = NotificationChannel(CHANNEL_ID, "KTX 매크로", NotificationManager.IMPORTANCE_LOW)
+        val ch = NotificationChannel(CHANNEL_ID, "SRT 매크로", NotificationManager.IMPORTANCE_LOW)
         getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    private fun buildNotification(text: String = "패널을 표시하려면 탭하세요"): Notification {
-        val intent = Intent(this, FloatingPanelService::class.java).apply { action = ACTION_SHOW_PANEL }
-        val pending = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    private fun buildNotification(text: String = "SRT 패널을 표시하려면 탭하세요"): Notification {
+        val intent = Intent(this, SrtFloatingPanelService::class.java).apply { action = ACTION_SHOW_PANEL }
+        val pending = PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("KTX 자동예매 실행 중")
+            .setContentTitle("SRT 자동예매 실행 중")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pending)
@@ -832,6 +754,6 @@ class FloatingPanelService : Service() {
     }
 
     private fun updateNotification(text: String) {
-        getSystemService(NotificationManager::class.java).notify(1, buildNotification(text))
+        getSystemService(NotificationManager::class.java).notify(2, buildNotification(text))
     }
 }

@@ -18,12 +18,16 @@ class MacroAccessibilityService : AccessibilityService() {
         fun isRunning() = instance != null
 
         fun isEnabledInSettings(context: Context): Boolean {
-            val id = "${context.packageName}/.MacroAccessibilityService"
             val enabled = Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
             ) ?: return false
-            return enabled.split(":").any { it.equals(id, ignoreCase = true) }
+            val pkg = context.packageName.lowercase()
+            // 시스템은 "패키지명/풀클래스명" 또는 "패키지명/.클래스명" 형태로 저장
+            return enabled.split(":").any { component ->
+                val lower = component.lowercase()
+                lower.startsWith(pkg) && lower.contains("macroaccessibilityservice")
+            }
         }
     }
 

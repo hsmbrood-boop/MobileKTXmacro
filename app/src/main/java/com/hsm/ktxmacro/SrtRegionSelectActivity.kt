@@ -9,7 +9,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import kotlin.math.sqrt
 
-class RegionSelectActivity : Activity() {
+class SrtRegionSelectActivity : Activity() {
 
     private enum class DragMode { NONE, MOVE, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR }
 
@@ -32,7 +32,7 @@ class RegionSelectActivity : Activity() {
 
         val btnConfirm = Button(this).apply {
             text = "✓  확인"
-            setBackgroundColor(Color.parseColor("#1565C0"))
+            setBackgroundColor(Color.parseColor("#6a0572"))
             setTextColor(Color.WHITE)
             textSize = 17f
             setPadding(80, 24, 80, 24)
@@ -59,19 +59,19 @@ class RegionSelectActivity : Activity() {
         private var dragMode = DragMode.NONE
         private var lastX = 0f; private var lastY = 0f
 
-        private val HANDLE_HIT = 70f  // 터치 감지 반경
-        private val HANDLE_VIS = 22f  // 핸들 표시 반경
+        private val HANDLE_HIT = 70f
+        private val HANDLE_VIS = 22f
         private val MIN_SIZE = if (capturePrefix != null) 10f else 80f
 
-        private val snapshot: Bitmap? = FloatingPanelService.instance?.captureSnapshot
+        private val snapshot: Bitmap? = SrtFloatingPanelService.instance?.captureSnapshot
 
         private val overlayPaint = Paint().apply { color = Color.argb(150, 0, 0, 0) }
         private val borderPaint = Paint().apply {
-            color = Color.parseColor("#FF4081"); style = Paint.Style.STROKE; strokeWidth = 4f
+            color = Color.parseColor("#c084e8"); style = Paint.Style.STROKE; strokeWidth = 4f
         }
         private val handleFill = Paint().apply { color = Color.WHITE }
         private val handleBorder = Paint().apply {
-            color = Color.parseColor("#FF4081"); style = Paint.Style.STROKE; strokeWidth = 3f
+            color = Color.parseColor("#c084e8"); style = Paint.Style.STROKE; strokeWidth = 3f
         }
         private val headerBg = Paint().apply { color = Color.argb(190, 0, 0, 0) }
         private val headerText = Paint().apply {
@@ -81,7 +81,7 @@ class RegionSelectActivity : Activity() {
         private val sizeText = Paint().apply {
             color = Color.parseColor("#FFD740"); textSize = 34f; textAlign = Paint.Align.CENTER
         }
-        private val zoomBgPaint = Paint().apply { color = Color.argb(220, 0, 0, 20) }
+        private val zoomBgPaint = Paint().apply { color = Color.argb(220, 20, 0, 20) }
         private val zoomBorderPaint = Paint().apply {
             color = Color.parseColor("#FFD740"); style = Paint.Style.STROKE; strokeWidth = 3f
         }
@@ -91,7 +91,7 @@ class RegionSelectActivity : Activity() {
         }
         private val zoomImgPaint = Paint().apply { isFilterBitmap = true }
         private val crossPaint = Paint().apply {
-            color = Color.parseColor("#FF4081"); strokeWidth = 2.5f; alpha = 200
+            color = Color.parseColor("#c084e8"); strokeWidth = 2.5f; alpha = 200
         }
 
         override fun onSizeChanged(w: Int, h: Int, oldW: Int, oldH: Int) {
@@ -110,15 +110,12 @@ class RegionSelectActivity : Activity() {
                 canvas.drawColor(Color.BLACK)
             }
 
-            // dim outside box
             canvas.drawRect(0f, 0f, width.toFloat(), boxTop, overlayPaint)
             canvas.drawRect(0f, boxBottom, width.toFloat(), height.toFloat(), overlayPaint)
             canvas.drawRect(0f, boxTop, boxLeft, boxBottom, overlayPaint)
             canvas.drawRect(boxRight, boxTop, width.toFloat(), boxBottom, overlayPaint)
-
             canvas.drawRect(boxLeft, boxTop, boxRight, boxBottom, borderPaint)
 
-            // corner handles
             for ((cx, cy) in listOf(
                 boxLeft to boxTop, boxRight to boxTop,
                 boxLeft to boxBottom, boxRight to boxBottom
@@ -127,20 +124,17 @@ class RegionSelectActivity : Activity() {
                 canvas.drawCircle(cx, cy, HANDLE_VIS, handleBorder)
             }
 
-            // header
             val msg = if (capturePrefix != null) "[$capturePrefix] 상자 이동·모서리 크기조절 후 ✓ 확인"
-                      else "b2/b3 탐색 범위 지정 (좌석/입석 버튼 영역) → ✓ 확인"
+                      else "sb2/sb3 탐색 범위 지정 (좌석/입석 버튼 영역) → ✓ 확인"
             canvas.drawRect(0f, 28f, width.toFloat(), 96f, headerBg)
             canvas.drawText(msg, width / 2f, 78f, headerText)
 
-            // size in px
             val sx = (snapshot?.width?.toFloat() ?: width.toFloat()) / width
             val sy = (snapshot?.height?.toFloat() ?: height.toFloat()) / height
             val pw = ((boxRight - boxLeft) * sx).toInt()
             val ph = ((boxBottom - boxTop) * sy).toInt()
             canvas.drawText("$pw × $ph", (boxLeft + boxRight) / 2, boxBottom + 52f, sizeText)
 
-            // 이미지 캡처 모드: 선택 영역 확대 미리보기
             if (capturePrefix != null && snapshot != null) drawZoomPreview(canvas, sx, sy)
         }
 
@@ -153,25 +147,17 @@ class RegionSelectActivity : Activity() {
             val srcW = (srcR - srcL).coerceAtLeast(1)
             val srcH = (srcB - srcT).coerceAtLeast(1)
 
-            val panelW = width * 0.82f
-            val panelH = height * 0.24f
-            val panelL = (width - panelW) / 2f
-            val panelB = height - 230f
-            val panelT = panelB - panelH
-            val panelR = panelL + panelW
+            val panelW = width * 0.82f; val panelH = height * 0.24f
+            val panelL = (width - panelW) / 2f; val panelB = height - 230f
+            val panelT = panelB - panelH; val panelR = panelL + panelW
 
-            // 배경
             canvas.drawRect(panelL - 6, panelT - 50f, panelR + 6, panelB + 6, zoomBgPaint)
-            // 확대 이미지
             canvas.drawBitmap(snap, Rect(srcL, srcT, srcR, srcB),
                 RectF(panelL, panelT, panelR, panelB), zoomImgPaint)
-            // 테두리
             canvas.drawRect(panelL, panelT, panelR, panelB, zoomBorderPaint)
-            // 중심 십자선
             val cx = (panelL + panelR) / 2f; val cy = (panelT + panelB) / 2f
             canvas.drawLine(cx - 24f, cy, cx + 24f, cy, crossPaint)
             canvas.drawLine(cx, cy - 24f, cx, cy + 24f, crossPaint)
-            // 라벨
             val zoom = minOf(panelW / srcW, panelH / srcH)
             canvas.drawText("확대 ${"%.1f".format(zoom)}x  (${srcW}px × ${srcH}px)",
                 width / 2f, panelT - 14f, zoomLabelPaint)
@@ -186,8 +172,7 @@ class RegionSelectActivity : Activity() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.x - lastX; val dy = event.y - lastY
                     lastX = event.x; lastY = event.y
-                    applyDrag(dx, dy)
-                    invalidate()
+                    applyDrag(dx, dy); invalidate()
                 }
                 MotionEvent.ACTION_UP -> dragMode = DragMode.NONE
             }
@@ -240,15 +225,10 @@ class RegionSelectActivity : Activity() {
     }
 
     private fun onRegionConfirmed(rect: RectF) {
-        val svc = FloatingPanelService.instance
-        if (svc == null && capturePrefix == null) {
-            // 서비스가 죽었으면 매크로 시작 불가 - 조용히 닫기만
-            finish()
-            return
-        }
+        val svc = SrtFloatingPanelService.instance
+        if (svc == null && capturePrefix == null) { finish(); return }
         val screen = svc?.captureSnapshot
 
-        // 뷰 → 비트맵 좌표 스케일 (스냅샷이 있으면 실제 해상도로 변환)
         val vw = regionView.width.toFloat().takeIf { it > 0 } ?: (screen?.width?.toFloat() ?: 1f)
         val vh = regionView.height.toFloat().takeIf { it > 0 } ?: (screen?.height?.toFloat() ?: 1f)
         val sx = (screen?.width?.toFloat() ?: vw) / vw
@@ -276,7 +256,7 @@ class RegionSelectActivity : Activity() {
     }
 
     override fun onDestroy() {
-        FloatingPanelService.instance?.isRegionSelectOpen = false
+        SrtFloatingPanelService.instance?.isRegionSelectOpen = false
         super.onDestroy()
     }
 

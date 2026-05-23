@@ -3,17 +3,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
+    android:gravity="center_horizontal"
     android:padding="24dp"
-    android:background="#1a1a2e">
+    android:background="#FFFFFF">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="KTX 자동예매 매크로"
+        android:text="Developed by HSM of Orc Holdings."
         android:textColor="#e94560"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:layout_marginTop="16dp"
         android:layout_marginBottom="32dp" />
 
     <!-- 권한 상태 표시 -->
@@ -21,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#16213e"
+        android:background="#F5F5F5"
         android:padding="16dp"
         android:layout_marginBottom="24dp">
 
@@ -30,7 +31,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="⬜ 다른 앱 위에 표시 권한"
-            android:textColor="#8892b0"
+            android:textColor="#555555"
             android:textSize="13sp" />
 
         <TextView
@@ -38,7 +39,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="⬜ 접근성 서비스 권한"
-            android:textColor="#8892b0"
+            android:textColor="#555555"
             android:textSize="13sp"
             android:layout_marginTop="8dp" />
 
@@ -47,7 +48,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="⬜ 화면 캡처 권한"
-            android:textColor="#8892b0"
+            android:textColor="#555555"
             android:textSize="13sp"
             android:layout_marginTop="8dp" />
     </LinearLayout>
@@ -70,9 +71,10 @@
     <Button
         android:id="@+id/btn_grant_capture"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="64dp"
         android:layout_marginTop="8dp"
-        android:text="3. 화면 캡처 허용 및 시작"
+        android:text="3. 화면 캡처 허용 및 시작&#10;반드시 전체화면공유로 선택"
+        android:textSize="13sp"
         android:backgroundTint="#1565c0" />
 
     <Button
@@ -80,10 +82,41 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="24dp"
-        android:text="매크로 패널 시작"
+        android:text="KTX 매크로 시작"
         android:textSize="16sp"
         android:textStyle="bold"
         android:backgroundTint="#e94560"
         android:enabled="false" />
+
+    <Button
+        android:id="@+id/btn_start_srt"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:text="SRT 매크로 시작"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="#6a0572"
+        android:enabled="false" />
+
+    <!-- 하단 밀어내기용 spacer -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- 개발사 태그 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="40dp"
+        android:text="Developed by HSM of Orc Holdings."
+        android:textColor="#000000"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="8dp"
+        android:background="@drawable/bg_developer_tag" />
 
 </LinearLayout>
