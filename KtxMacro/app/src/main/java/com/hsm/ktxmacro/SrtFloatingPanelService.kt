@@ -87,9 +87,11 @@ class SrtFloatingPanelService : Service() {
     companion object {
         const val CHANNEL_ID = "srt_macro"
         const val ACTION_SHOW_PANEL = "com.hsm.ktxmacro.SRT_SHOW_PANEL"
+        const val ACTION_INHERIT_PROJECTION = "com.hsm.ktxmacro.SRT_INHERIT"
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_DATA = "data"
         var instance: SrtFloatingPanelService? = null
+        var handoffProjection: MediaProjection? = null
     }
 
     override fun onCreate() {
@@ -108,6 +110,11 @@ class SrtFloatingPanelService : Service() {
         when (intent?.action) {
             ACTION_SHOW_PANEL -> {
                 if (::panelView.isInitialized) panelView.visibility = View.VISIBLE
+            }
+            ACTION_INHERIT_PROJECTION -> {
+                val proj = handoffProjection
+                handoffProjection = null
+                if (proj != null) initScreenCaptureFromProjection(proj)
             }
             else -> {
                 val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, Int.MIN_VALUE) ?: Int.MIN_VALUE
@@ -166,6 +173,54 @@ class SrtFloatingPanelService : Service() {
             val mpManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjection = mpManager.getMediaProjection(resultCode, data)
 
+            mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    captureScope?.cancel(); captureScope = null
+                    virtualDisplay?.release(); virtualDisplay = null
+                    imageReader?.close(); imageReader = null
+                    screenBitmap = null; mediaProjection = null
+                    setStatus("화면 캡처 중단 → 앱 열어 재허용")
+                }
+            }, Handler(Looper.getMainLooper()))
+
+            imageReader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
+            virtualDisplay = mediaProjection!!.createVirtualDisplay(
+                "SrtCapture", w, h, dpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader!!.surface, null, null
+            )
+
+            captureScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+            captureScope!!.launch {
+                while (isActive) {
+                    try { captureScreen()?.let { screenBitmap = it } } catch (_: Throwable) {}
+                    delay(100)
+                }
+            }
+            setStatus("준비 완료")
+        } catch (e: Throwable) {
+            setStatus("캡처 오류: ${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    private fun initScreenCaptureFromProjection(projection: MediaProjection) {
+        captureScope?.cancel(); captureScope = null
+        virtualDisplay?.release(); virtualDisplay = null
+        imageReader?.close(); imageReader = null
+        screenBitmap = null; mediaProjection = null
+
+        try {
+            setStatus("캡처 연결 중...")
+            val (w, h) = getScreenSize()
+            val dpi = resources.displayMetrics.densityDpi
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(2, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            } else {
+                startForeground(2, buildNotification())
+            }
+
+            mediaProjection = projection
             mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     captureScope?.cancel(); captureScope = null
@@ -332,6 +387,22 @@ class SrtFloatingPanelService : Service() {
         panelView.findViewById<Button>(R.id.btn_minimize).setOnClickListener {
             panelView.visibility = View.GONE
             updateNotification("SRT 패널 숨김 - 여기를 탭하면 다시 표시됩니다")
+        }
+
+        panelView.findViewById<Button>(R.id.btn_switch_ktx).setOnClickListener {
+            macroEngine?.stop()
+            stopBlink()
+            stopAlarm()
+            captureScope?.cancel(); captureScope = null
+            virtualDisplay?.release(); virtualDisplay = null
+            imageReader?.close(); imageReader = null
+            screenBitmap = null
+            FloatingPanelService.handoffProjection = mediaProjection
+            mediaProjection = null
+            startForegroundService(Intent(this, FloatingPanelService::class.java).apply {
+                action = FloatingPanelService.ACTION_INHERIT_PROJECTION
+            })
+            stopSelf()
         }
 
         panelView.findViewById<Button>(R.id.btn_exit).setOnClickListener {
