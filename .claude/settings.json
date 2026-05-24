@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(**)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(mkdir*)",
+      "Bash(mv*)",
+      "Bash(cp*)"
+    ],
+    "deny": [
+      "Edit(.env*)",
+      "Bash(rm -rf*)",
+      "Bash(git push*)"
+    ]
+  }
+}
