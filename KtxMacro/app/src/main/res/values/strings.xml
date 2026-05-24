@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HSM MACRO</string>
+    <string name="accessibility_service_label">KTX 매크로 자동화</string>
+    <string name="accessibility_service_description">KTX 자동 예매를 위해 화면 터치를 자동화합니다.</string>
+</resources>

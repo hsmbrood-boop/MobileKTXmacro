@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- b1~b9 이미지 지정 버튼 공통 스타일 -->
+    <style name="ImgBtn" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_margin">2dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">#64ffda</item>
+        <item name="strokeColor">#2a2a4e</item>
+        <item name="android:backgroundTint">#0f2030</item>
+        <item name="android:padding">2dp</item>
+    </style>
+</resources>
