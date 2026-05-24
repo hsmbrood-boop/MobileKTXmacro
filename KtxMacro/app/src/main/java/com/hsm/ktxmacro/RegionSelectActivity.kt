@@ -3,10 +3,14 @@ package com.hsm.ktxmacro
 import android.app.Activity
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.*
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import kotlin.math.sqrt
 
 class RegionSelectActivity : Activity() {
@@ -16,6 +20,9 @@ class RegionSelectActivity : Activity() {
     private val mode by lazy { intent.getStringExtra("mode") }
     private val capturePrefix by lazy { intent.getStringExtra("capture_prefix") }
     private lateinit var regionView: RegionSelectView
+
+    private val blinkHandler = Handler(Looper.getMainLooper())
+    private var blinkRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,24 +37,69 @@ class RegionSelectActivity : Activity() {
         val frame = FrameLayout(this)
         frame.addView(regionView)
 
+        fun roundedBg(color: Int) = GradientDrawable().apply {
+            setColor(color); cornerRadius = 48f
+        }
+
+        val colorOn  = Color.parseColor("#42A5F5")
+        val colorOff = Color.parseColor("#1565C0")
+        val colorCancel = Color.parseColor("#424242")
+
         val btnConfirm = Button(this).apply {
-            text = "✓  확인"
-            setBackgroundColor(Color.parseColor("#1565C0"))
+            text = "✓  범위지정완료"
+            background = roundedBg(colorOff)
             setTextColor(Color.WHITE)
             textSize = 17f
-            setPadding(80, 24, 80, 24)
+            setPadding(60, 24, 60, 24)
         }
-        val confirmParams = FrameLayout.LayoutParams(
+        val btnCancel = Button(this).apply {
+            text = "✕  취소"
+            background = roundedBg(colorCancel)
+            setTextColor(Color.WHITE)
+            textSize = 17f
+            setPadding(60, 24, 60, 24)
+        }
+
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(btnConfirm, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).also { it.marginEnd = 24 })
+            addView(btnCancel, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        val rowParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             bottomMargin = 100
         }
-        frame.addView(btnConfirm, confirmParams)
+        frame.addView(btnRow, rowParams)
+
         btnConfirm.setOnClickListener { regionView.confirmSelection() }
+        btnCancel.setOnClickListener { finish() }
+
+        var blinkOn = false
+        blinkRunnable = object : Runnable {
+            override fun run() {
+                blinkOn = !blinkOn
+                btnConfirm.background = roundedBg(if (blinkOn) colorOn else colorOff)
+                blinkHandler.postDelayed(this, 500)
+            }
+        }
+        blinkHandler.post(blinkRunnable!!)
 
         setContentView(frame)
+    }
+
+    override fun onDestroy() {
+        blinkRunnable?.let { blinkHandler.removeCallbacks(it) }
+        FloatingPanelService.instance?.isRegionSelectOpen = false
+        super.onDestroy()
     }
 
     inner class RegionSelectView(ctx: Context) : View(ctx) {
@@ -273,11 +325,6 @@ class RegionSelectActivity : Activity() {
             mode?.let { svc?.onRegionSelected(it, scaleRect()) }
         }
         finish()
-    }
-
-    override fun onDestroy() {
-        FloatingPanelService.instance?.isRegionSelectOpen = false
-        super.onDestroy()
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
