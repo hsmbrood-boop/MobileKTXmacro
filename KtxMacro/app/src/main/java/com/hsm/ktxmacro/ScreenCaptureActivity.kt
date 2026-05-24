@@ -8,9 +8,11 @@ import android.os.Bundle
 class ScreenCaptureActivity : Activity() {
 
     private val REQ_CAPTURE = 1002
+    private var target = "ktx"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        target = intent?.getStringExtra("target") ?: "ktx"
         val mpManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(mpManager.createScreenCaptureIntent(), REQ_CAPTURE)
     }
@@ -19,13 +21,22 @@ class ScreenCaptureActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_CAPTURE && resultCode == RESULT_OK && data != null) {
-            startForegroundService(Intent(this, FloatingPanelService::class.java).apply {
-                putExtra(FloatingPanelService.EXTRA_RESULT_CODE, resultCode)
-                putExtra(FloatingPanelService.EXTRA_DATA, data)
-            })
-            FloatingPanelService.instance?.setStatus("화면 캡처 권한 허용됨")
+            if (target == "srt") {
+                startForegroundService(Intent(this, SrtFloatingPanelService::class.java).apply {
+                    putExtra(SrtFloatingPanelService.EXTRA_RESULT_CODE, resultCode)
+                    putExtra(SrtFloatingPanelService.EXTRA_DATA, data)
+                })
+                SrtFloatingPanelService.instance?.setStatus("화면 캡처 권한 허용됨")
+            } else {
+                startForegroundService(Intent(this, FloatingPanelService::class.java).apply {
+                    putExtra(FloatingPanelService.EXTRA_RESULT_CODE, resultCode)
+                    putExtra(FloatingPanelService.EXTRA_DATA, data)
+                })
+                FloatingPanelService.instance?.setStatus("화면 캡처 권한 허용됨")
+            }
         } else {
             FloatingPanelService.instance?.setStatus("화면 캡처 권한 거부됨")
+            SrtFloatingPanelService.instance?.setStatus("화면 캡처 권한 거부됨")
         }
         finish()
     }

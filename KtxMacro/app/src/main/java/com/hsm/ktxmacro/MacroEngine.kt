@@ -78,9 +78,9 @@ class MacroEngine(
                     status("sb3 발견 → 클릭"); tap(pos3); delay(500)
                 } else {
                     status("sb3 없음 → sb4 탐색 중...")
-                    val pos4 = matchText("sb4")
+                    val pos4 = matchText("sb4", region)
                     if (pos4 != null) { status("sb4 발견 → 클릭"); tap(pos4); delay(500) }
-                    else status("sb4 없음 → 진행")
+                    else { status("sb3/sb4 없음 → 처음으로"); delay(300); continue }
                 }
             } else {
                 // 좌석예매: sb3 없으면 처음으로

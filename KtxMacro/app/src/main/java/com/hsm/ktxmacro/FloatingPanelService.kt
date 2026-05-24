@@ -416,25 +416,16 @@ class FloatingPanelService : Service() {
 
         panelView.findViewById<Button>(R.id.btn_toggle).setOnClickListener { togglePanel() }
 
+        panelView.findViewById<Button>(R.id.btn_capture).setOnClickListener {
+            startActivity(Intent(this, ScreenCaptureActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("target", "ktx")
+            })
+        }
+
         panelView.findViewById<Button>(R.id.btn_minimize).setOnClickListener {
             panelView.visibility = View.GONE
             updateNotification("패널 숨김 - 여기를 탭하면 다시 표시됩니다")
-        }
-
-        panelView.findViewById<Button>(R.id.btn_switch_srt).setOnClickListener {
-            macroEngine?.stop()
-            stopBlink()
-            stopAlarm()
-            captureScope?.cancel(); captureScope = null
-            virtualDisplay?.release(); virtualDisplay = null
-            imageReader?.close(); imageReader = null
-            screenBitmap = null
-            SrtFloatingPanelService.handoffProjection = mediaProjection
-            mediaProjection = null
-            startForegroundService(Intent(this, SrtFloatingPanelService::class.java).apply {
-                action = SrtFloatingPanelService.ACTION_INHERIT_PROJECTION
-            })
-            stopSelf()
         }
 
         panelView.findViewById<Button>(R.id.btn_exit).setOnClickListener {

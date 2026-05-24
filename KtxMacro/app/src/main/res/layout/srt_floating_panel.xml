@@ -189,6 +189,19 @@
             android:layout_marginTop="6dp"
             android:background="#4a0072" />
 
+        <!-- 화면 캡처 허용 -->
+        <Button
+            android:id="@+id/btn_capture"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_marginTop="4dp"
+            android:text="📷 화면 캡처 허용"
+            android:textSize="11sp"
+            android:textColor="#ffffff"
+            android:backgroundTint="#4a0072"
+            android:minWidth="0dp"
+            android:minHeight="0dp" />
+
         <!-- 패널 숨기기 -->
         <Button
             android:id="@+id/btn_minimize"
@@ -199,20 +212,6 @@
             android:textSize="11sp"
             android:textColor="#ffffff"
             android:backgroundTint="#4a0072"
-            android:minWidth="0dp"
-            android:minHeight="0dp" />
-
-        <!-- KTX 자동예매 전환 -->
-        <Button
-            android:id="@+id/btn_switch_ktx"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="3dp"
-            android:text="KTX 자동예매"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#ffffff"
-            android:backgroundTint="#1565c0"
             android:minWidth="0dp"
             android:minHeight="0dp" />
 

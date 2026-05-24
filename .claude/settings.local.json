@@ -63,7 +63,20 @@
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; Set-Location \"C:\\\\MKTX\\\\KtxMacro\"; .\\\\gradlew.bat assembleDebug 2>&1 | Select-String -Pattern \"BUILD|error:|Error\")",
       "PowerShell(gh auth *)",
       "Bash(gh auth *)",
-      "Bash(git init *)"
+      "Bash(git init *)",
+      "Bash(git rm *)",
+      "Bash(Remove-Item -Recurse -Force KtxMacro\\\\.git)",
+      "Bash(gh repo *)",
+      "PowerShell(git *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; cd C:\\\\MKTX\\\\KtxMacro; .\\\\gradlew.bat assembleDebug 2>&1)",
+      "PowerShell($adb = \"C:\\\\Users\\\\hsmbr\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb install -r \"C:\\\\MKTX\\\\KtxMacro\\\\app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\" 2>&1)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; cd C:\\\\MKTX\\\\KtxMacro; .\\\\gradlew.bat assembleDebug 2>&1 | Select-String -Pattern \"BUILD|error|Error\")",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; cd C:\\\\MKTX\\\\KtxMacro; .\\\\gradlew.bat assembleDebug 2>&1 | Select-String -Pattern \"BUILD|error:|Error:\")",
+      "PowerShell(& \"C:\\\\Users\\\\hsmbr\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" install -r \"C:\\\\MKTX\\\\KtxMacro\\\\app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\")",
+      "PowerShell(& \"C:\\\\Users\\\\hsmbr\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" shell am start -n \"com.hsm.ktxmacro/.MainActivity\")",
+      "PowerShell(& \"C:\\\\Users\\\\hsmbr\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" install -r \"C:\\\\MKTX\\\\KtxMacro\\\\app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\"; & \"C:\\\\Users\\\\hsmbr\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" shell am start -n \"com.hsm.ktxmacro/.MainActivity\")",
+      "PowerShell(gh release *)"
     ]
   }
 }
