@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStartSrt: Button
 
     private var testPlayer: MediaPlayer? = null
+    private var backPressedTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,6 +136,17 @@ class MainActivity : AppCompatActivity() {
     private fun requestSrtCapture() {
         val mpManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(mpManager.createScreenCaptureIntent(), REQ_CAPTURE_SRT)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        val now = System.currentTimeMillis()
+        if (now - backPressedTime < 2000L) {
+            super.onBackPressed()
+        } else {
+            backPressedTime = now
+            Toast.makeText(this, "한번더 누르면 앱이 종료됩니다", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

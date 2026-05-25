@@ -402,27 +402,6 @@ class SrtFloatingPanelService : Service() {
             stopSelf()
         }
 
-        val backupManager = BackupManager(this)
-        panelView.findViewById<Button>(R.id.btn_backup).setOnClickListener {
-            backupManager.export { ok, msg ->
-                setStatus(if (ok) "✅ 백업 완료:\n$msg" else "❌ 백업 실패: $msg")
-            }
-        }
-        panelView.findViewById<Button>(R.id.btn_restore).setOnClickListener {
-            backupManager.import(
-                onImageRestored = { key, bmp ->
-                    templates[key] = bmp
-                    updateBtnPreview(key, bmp)
-                },
-                onResult = { ok, msg ->
-                    Handler(Looper.getMainLooper()).post {
-                        setStatus(if (ok) "✅ $msg" else "❌ $msg")
-                        if (ok) { loadTextTargets() }
-                    }
-                }
-            )
-        }
-
         // sb1, sb2: 이미지 캡처 / sb3~sb8: 텍스트 설정
         panelView.findViewById<View>(R.id.btn_sb1)?.setOnClickListener { startRegionCapture("sb1") }
         panelView.findViewById<View>(R.id.btn_sb2)?.setOnClickListener { startRegionCapture("sb2") }
