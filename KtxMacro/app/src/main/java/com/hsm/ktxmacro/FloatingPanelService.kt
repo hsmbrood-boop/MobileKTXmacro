@@ -417,13 +417,6 @@ class FloatingPanelService : Service() {
 
         panelView.findViewById<Button>(R.id.btn_toggle).setOnClickListener { togglePanel() }
 
-        panelView.findViewById<Button>(R.id.btn_capture).setOnClickListener {
-            startActivity(Intent(this, ScreenCaptureActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                putExtra("target", "ktx")
-            })
-        }
-
         panelView.findViewById<Button>(R.id.btn_minimize).setOnClickListener {
             panelView.visibility = View.GONE
             updateNotification("패널 숨김 - 여기를 탭하면 다시 표시됩니다")
