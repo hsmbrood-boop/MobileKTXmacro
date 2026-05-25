@@ -100,6 +100,7 @@ class SrtFloatingPanelService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
         startForeground(2, buildNotification())
+        BackupManager(this).loadDefaultsIfNeeded()
         inflatePanel()
         loadTemplates()
         loadTextTargets()
@@ -399,6 +400,27 @@ class SrtFloatingPanelService : Service() {
         panelView.findViewById<Button>(R.id.btn_exit).setOnClickListener {
             macroEngine?.stop()
             stopSelf()
+        }
+
+        val backupManager = BackupManager(this)
+        panelView.findViewById<Button>(R.id.btn_backup).setOnClickListener {
+            backupManager.export { ok, msg ->
+                setStatus(if (ok) "✅ 백업 완료:\n$msg" else "❌ 백업 실패: $msg")
+            }
+        }
+        panelView.findViewById<Button>(R.id.btn_restore).setOnClickListener {
+            backupManager.import(
+                onImageRestored = { key, bmp ->
+                    templates[key] = bmp
+                    updateBtnPreview(key, bmp)
+                },
+                onResult = { ok, msg ->
+                    Handler(Looper.getMainLooper()).post {
+                        setStatus(if (ok) "✅ $msg" else "❌ $msg")
+                        if (ok) { loadTextTargets() }
+                    }
+                }
+            )
         }
 
         // sb1, sb2: 이미지 캡처 / sb3~sb8: 텍스트 설정
