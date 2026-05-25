@@ -64,6 +64,16 @@ class MacroEngine(
             while (matchFull(sb1) == null) { delay(500) }
             status("sb1 확인됨")
 
+            // sb1 재출현 후 0.2초간 sb7 탐색 → 있으면 사라질 때까지 대기
+            status("sb7 확인 중... (0.2초)")
+            val sb7Check = System.currentTimeMillis() + 200L
+            var sb7Seen = false
+            while (System.currentTimeMillis() < sb7Check) {
+                if (matchText("sb7") != null) { sb7Seen = true; break }
+                delay(50)
+            }
+            if (sb7Seen) waitForSb7Dismiss()
+
             // 3. sb2 이미지 대기 (나올 때까지)
             status("sb2 대기 중...")
             while (matchFull(sb2) == null) { delay(500) }
@@ -198,8 +208,10 @@ class MacroEngine(
 
             clickB5For200ms(p)
 
-            status("${p}7 탐색 중... (5초)")
-            val b7Deadline = System.currentTimeMillis() + 5_000L
+            waitForB6Dismiss(p)
+
+            status("${p}7 탐색 중... (3초)")
+            val b7Deadline = System.currentTimeMillis() + 3_000L
             var b7Found = false
             while (System.currentTimeMillis() < b7Deadline) {
                 if (matchText("${p}7") != null) { b7Found = true; break }

@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvOverlay: TextView
     private lateinit var tvAccessibility: TextView
-    private lateinit var tvCapture: TextView
     private lateinit var btnStart: Button
     private lateinit var btnStartSrt: Button
 
@@ -37,7 +36,6 @@ class MainActivity : AppCompatActivity() {
 
         tvOverlay       = findViewById(R.id.tv_perm_overlay)
         tvAccessibility = findViewById(R.id.tv_perm_accessibility)
-        tvCapture       = findViewById(R.id.tv_perm_capture)
         btnStart        = findViewById(R.id.btn_start)
         btnStartSrt     = findViewById(R.id.btn_start_srt)
 
@@ -59,10 +57,6 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_grant_accessibility).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
-
-        findViewById<Button>(R.id.btn_grant_capture).setOnClickListener {
-            requestKtxCapture()
         }
 
         btnStart.setOnClickListener {
@@ -124,10 +118,8 @@ class MainActivity : AppCompatActivity() {
 
         tvOverlay.text = if (hasOverlay) "✅ 다른 앱 위에 표시 권한" else "⬜ 다른 앱 위에 표시 권한"
         tvAccessibility.text = if (hasAccessibility) "✅ 접근성 서비스 권한" else "⬜ 접근성 서비스 권한"
-        tvCapture.text = if (ktxRunning || srtRunning) "✅ 화면 캡처 권한" else "⬜ 화면 캡처 권한"
 
         val ready = hasOverlay && hasAccessibility
-        findViewById<Button>(R.id.btn_grant_capture).isEnabled = ready
         btnStart.isEnabled = ready
         btnStart.text = if (ktxRunning) "KTX 패널 다시 표시" else "KTX 매크로 시작"
         btnStartSrt.isEnabled = ready
@@ -150,7 +142,6 @@ class MainActivity : AppCompatActivity() {
             REQ_OVERLAY -> updatePermissionUI()
             REQ_CAPTURE_KTX -> {
                 if (resultCode == Activity.RESULT_OK && data != null) {
-                    tvCapture.text = "✅ 화면 캡처 권한"
                     startForegroundService(Intent(this, FloatingPanelService::class.java).apply {
                         putExtra(FloatingPanelService.EXTRA_RESULT_CODE, resultCode)
                         putExtra(FloatingPanelService.EXTRA_DATA, data)
@@ -160,7 +151,6 @@ class MainActivity : AppCompatActivity() {
             }
             REQ_CAPTURE_SRT -> {
                 if (resultCode == Activity.RESULT_OK && data != null) {
-                    tvCapture.text = "✅ 화면 캡처 권한"
                     startForegroundService(Intent(this, SrtFloatingPanelService::class.java).apply {
                         putExtra(SrtFloatingPanelService.EXTRA_RESULT_CODE, resultCode)
                         putExtra(SrtFloatingPanelService.EXTRA_DATA, data)

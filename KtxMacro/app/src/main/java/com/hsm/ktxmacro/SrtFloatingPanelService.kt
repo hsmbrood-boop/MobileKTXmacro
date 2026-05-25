@@ -560,22 +560,16 @@ class SrtFloatingPanelService : Service() {
         return enhanced to scale
     }
 
-    private fun expandRegion(region: Rect, src: Bitmap, margin: Int = 100): Rect = Rect(
-        (region.left - margin).coerceAtLeast(0),
-        (region.top - margin).coerceAtLeast(0),
-        (region.right + margin).coerceAtMost(src.width),
-        (region.bottom + margin).coerceAtMost(src.height)
-    )
-
-    suspend fun findTextOnScreen(text: String, region: Rect? = null): Point? {
+suspend fun findTextOnScreen(text: String, region: Rect? = null): Point? {
         if (text.isBlank()) return null
         val full = screenBitmap ?: return null
         val src = maskPanelArea(full)
         val rawBitmap: Bitmap; val offsetX: Int; val offsetY: Int
         if (region != null) {
-            val exp = expandRegion(region, src)
-            rawBitmap = Bitmap.createBitmap(src, exp.left, exp.top, exp.width(), exp.height())
-            offsetX = exp.left; offsetY = exp.top
+            val w = region.width().coerceAtMost(src.width - region.left).coerceAtLeast(1)
+            val h = region.height().coerceAtMost(src.height - region.top).coerceAtLeast(1)
+            rawBitmap = Bitmap.createBitmap(src, region.left, region.top, w, h)
+            offsetX = region.left; offsetY = region.top
         } else { rawBitmap = src; offsetX = 0; offsetY = 0 }
         val (bitmap, scale) = prepareForOcr(rawBitmap, region != null)
         return suspendCancellableCoroutine { cont ->
@@ -608,9 +602,10 @@ class SrtFloatingPanelService : Service() {
         val src = maskPanelArea(full)
         val rawBitmap: Bitmap; val offsetX: Int; val offsetY: Int
         if (region != null) {
-            val exp = expandRegion(region, src)
-            rawBitmap = Bitmap.createBitmap(src, exp.left, exp.top, exp.width(), exp.height())
-            offsetX = exp.left; offsetY = exp.top
+            val w = region.width().coerceAtMost(src.width - region.left).coerceAtLeast(1)
+            val h = region.height().coerceAtMost(src.height - region.top).coerceAtLeast(1)
+            rawBitmap = Bitmap.createBitmap(src, region.left, region.top, w, h)
+            offsetX = region.left; offsetY = region.top
         } else { rawBitmap = src; offsetX = 0; offsetY = 0 }
         val (bitmap, scale) = prepareForOcr(rawBitmap, region != null)
         return suspendCancellableCoroutine { cont ->
